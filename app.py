@@ -9,7 +9,7 @@ vectorizer = joblib.load("tfidf_vectorizer.pkl")
 data = pd.read_csv("cosmetic_p.csv")
 data["ingredients"] = data["ingredients"].str.lower()
 
-# Aturan rule-based
+# Rule-based kebutuhan
 rules = {
     "Mencerahkan Wajah": ["niacinamide", "vitamin c", "alpha arbutin"],
     "Mengurangi Jerawat": ["salicylic acid", "benzoyl peroxide", "tea tree", "azelaic acid", "sulfur"],
@@ -17,7 +17,7 @@ rules = {
     "Melembapkan Kulit": ["hyaluronic acid", "ceramide", "glycerin", "squalane"],
 }
 
-# Konfigurasi Streamlit
+# Streamlit setup
 st.set_page_config(page_title="Rekomendasi Skincare", page_icon="💄", layout="centered")
 
 st.markdown("""
@@ -37,7 +37,7 @@ st.markdown("""
 
 st.title("🔍 Rekomendasi Produk Skincare")
 
-# Input form
+# Form
 kebutuhan = st.selectbox("🎯 Apa tujuan skincare Anda?", list(rules.keys()))
 produk_type = st.selectbox("🍶 Pilih jenis produk", data["label"].unique())
 jenis_kulit = st.multiselect("💧 Jenis Kulit Anda (opsional):", 
@@ -48,39 +48,42 @@ rating_weight = 1.0 - similarity_weight
 
 if st.button("✅ Tampilkan Rekomendasi"):
     keywords = rules[kebutuhan]
-    produk_subset = data[data["label"] == produk_type]
+    produk_subset = data[data["label"] == produk_type].copy()
 
-    def contains_ingredients(text):
-        return any(ing in text for ing in keywords)
-
-    rule_filtered = produk_subset[produk_subset["ingredients"].apply(contains_ingredients)]
-
-    if rule_filtered.empty:
-        st.warning("⚠️ Tidak ada produk dengan bahan tersebut. Menampilkan alternatif...")
-        rule_filtered = produk_subset.copy()
-
-    tfidf_matrix = vectorizer.fit_transform(rule_filtered["ingredients"])
+    # TF-IDF dan cosine similarity terhadap semua produk di kategori tersebut
+    tfidf_matrix = vectorizer.fit_transform(produk_subset["ingredients"])
     query_doc = " ".join(keywords)
     query_vec = vectorizer.transform([query_doc])
     similarities = cosine_similarity(query_vec, tfidf_matrix).flatten()
-    rule_filtered["similarity"] = similarities
+    produk_subset["similarity"] = similarities
 
-    # Filter jenis kulit
+    # Tandai apakah mengandung keyword atau tidak (untuk meningkatkan skor nanti)
+    def contains_ingredients(text):
+        return any(ing in text for ing in keywords)
+    
+    produk_subset["has_keyword"] = produk_subset["ingredients"].apply(contains_ingredients)
+
+    # Filter jenis kulit (opsional)
     for skin in jenis_kulit:
-        if skin in rule_filtered.columns:
-            rule_filtered = rule_filtered[rule_filtered[skin] == 1]
+        if skin in produk_subset.columns:
+            produk_subset = produk_subset[produk_subset[skin] == 1]
 
-    rule_filtered["combined_score"] = (
-        similarity_weight * rule_filtered["similarity"] +
-        rating_weight * (rule_filtered["rank"] / 5)
+    # Skor gabungan
+    produk_subset["combined_score"] = (
+        similarity_weight * produk_subset["similarity"] +
+        rating_weight * (produk_subset["rank"] / 5)
     )
 
-    recommended = rule_filtered.sort_values(by="combined_score", ascending=False)
+    # Bonus: Naikkan skor jika mengandung keyword (opsional)
+    produk_subset.loc[produk_subset["has_keyword"], "combined_score"] += 0.1
+
+    # Urutkan hasil
+    recommended = produk_subset.sort_values(by="combined_score", ascending=False)
 
     if not recommended.empty:
         st.success(f"✅ Ditemukan {len(recommended)} produk yang cocok:")
-        for _, row in recommended.iterrows():
-            st.markdown("### 🧴 " + row['name'])
+        for _, row in recommended.head(15).iterrows():
+            st.markdown(f"### 🧴 {row['name']}")
             st.markdown(f"**Brand:** {row['brand']}  |  💰 **Harga:** ${row['price']}  |  ⭐ **Rating:** {row['rank']}")
             st.markdown(f"**Ingredients:** {row['ingredients'][:300]}...")
             st.markdown("---")
