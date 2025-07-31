@@ -35,7 +35,7 @@ rules = {
 }
 
 # --- UI ---
-st.title("🔍 Skincare Produk Recommendation")
+st.title("🔍 Skincare Product Recommendation")
 
 # Input pengguna
 kebutuhan = st.selectbox("🎯 What is your skincare goal?", list(rules.keys()))
