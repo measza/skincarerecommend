@@ -28,29 +28,29 @@ data = load_data()
 
 # --- Aturan sistem pakar ---
 rules = {
-    "Mencerahkan Wajah": ["niacinamide", "vitamin c", "alpha arbutin"],
-    "Mengurangi Jerawat": ["salicylic acid", "benzoyl peroxide", "tea tree", "azelaic acid", "sulfur"],
+    "Brightening": ["niacinamide", "vitamin c", "alpha arbutin"],
+    "Reduce Acne": ["salicylic acid", "benzoyl peroxide", "tea tree", "azelaic acid", "sulfur"],
     "Anti Aging": ["retinol", "peptide", "coenzyme q10", "bakuchiol"],
-    "Melembapkan Kulit": ["hyaluronic acid", "ceramide", "glycerin", "squalane"],
+    "Moisturizes Skin": ["hyaluronic acid", "ceramide", "glycerin", "squalane"],
 }
 
 # --- UI ---
-st.title("🔍 Rekomendasi Produk Skincare")
+st.title("🔍 Skincare Produk Recommendation")
 
 # Input pengguna
-kebutuhan = st.selectbox("🎯 Apa tujuan skincare Anda?", list(rules.keys()))
-produk_type = st.selectbox("🧴 Pilih jenis produk", data["label"].unique())
+kebutuhan = st.selectbox("🎯 What is your skincare goal?", list(rules.keys()))
+produk_type = st.selectbox("🧴 Select product type", data["label"].unique())
 
 jenis_kulit = st.multiselect(
-    "💧 Jenis Kulit Anda (opsional):",
+    "💧 Your skin type (opsional):",
     ["combination", "dry", "normal", "oily", "sensitive"]
 )
 
-similarity_weight = st.slider("⚖️ Prioritaskan bahan atau rating", 0.0, 1.0, 0.7, help="0 = Hanya rating, 1 = Hanya bahan aktif")
+similarity_weight = st.slider("⚖️ Prioritize rating or ingredient", 0.0, 1.0, 0.7, help="0 = Hanya rating, 1 = Hanya bahan aktif")
 rating_weight = 1.0 - similarity_weight
 
 # --- Rekomendasi ---
-if st.button("✨ Tampilkan Rekomendasi"):
+if st.button("✨ Show Recommendations"):
     keywords = rules[kebutuhan]
     produk_subset = data[data["label"].str.lower() == produk_type.lower()]
 
@@ -84,7 +84,7 @@ if st.button("✨ Tampilkan Rekomendasi"):
 
     # --- Tampilkan hasil ---
     if not recommended.empty:
-        st.success(f"👍 Ditemukan {len(recommended)} produk yang cocok:")
+        st.success(f"👍 Found {len(recommended)} matching products:")
         for _, row in recommended.iterrows():
             st.markdown(f"### 🧴 {row['name']}")
             st.markdown(f"**Brand:** {row['brand']} &nbsp;&nbsp; | &nbsp;&nbsp; 💰 **Harga:** ${row['price']} &nbsp;&nbsp; | ⭐ **Rating:** {row['rank']}")
